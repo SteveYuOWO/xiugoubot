@@ -1,5 +1,6 @@
 import Big from "big.js";
 import { client } from "./client";
+import DingtalkBot from "./dingtalk-bot";
 
 async function thresholdFuturesMarkPrice(threshold = 0.1) {
   const futureMarkPrices = await client.futuresMarkPrice();
@@ -26,7 +27,7 @@ export async function thresholdFuturesDailyStatses(symbols: string[]) {
   );
 }
 
-export async function fetchAbnormalToken() {
+export async function fetchAbnormalTokens() {
   // funding rate less than 0.1 %
   const thresholdMarkPrice = await thresholdFuturesMarkPrice();
 
@@ -47,6 +48,19 @@ export async function fetchAbnormalToken() {
 }
 
 export async function runApp() {
-  const result = await fetchAbnormalToken();
-  console.log(result);
+  const abnormalTokens = await fetchAbnormalTokens();
+
+  await Promise.all(
+    abnormalTokens.map(
+      async (token) =>
+        await DingtalkBot.sendText(
+          [
+            `异常币种监测`,
+            `币种: ${token.symbol}`,
+            `资金费率: ${token.fundingRatePercent}`,
+            `标记价格: ${token.markPrice}`,
+          ].join("\n")
+        )
+    )
+  );
 }
