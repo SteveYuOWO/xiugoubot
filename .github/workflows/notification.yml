@@ -1,0 +1,32 @@
+# This is a basic workflow to help you get started with Actions
+
+name: XiuGou Bot Action
+
+# Controls when the workflow will run
+on:
+  push:
+    branches: [main]
+  # schedule:
+  # see https://docs.github.com/en/actions/learn-github-actions/events-that-trigger-workflows#schedule
+  # run the schedule once per minute
+  # - cron: "55 * * * *"
+  schedule:
+    - cron: "1 * * * *"
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  send-notification:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16
+      - run: |
+          yarn install
+          yarn start

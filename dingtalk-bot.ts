@@ -6,13 +6,6 @@ interface DingtalkResponse {
   errmsg: string;
 }
 class DingTalkBot {
-  private headers: AxiosRequestHeaders;
-  constructor() {
-    this.headers = {
-      "Content-Type": "application/json",
-    };
-  }
-
   private signSecret(secret: string, content: string) {
     const str = crypto
       .createHmac("sha256", secret)
@@ -31,7 +24,9 @@ class DingTalkBot {
       url,
       JSON.stringify({ msgtype: "text", text: { content: text } }),
       {
-        headers: this.headers,
+        headers: {
+          "Content-Type": "application/json",
+        },
       }
     );
     if (result.data.errcode !== 0) {
