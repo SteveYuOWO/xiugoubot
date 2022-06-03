@@ -30,3 +30,6 @@ jobs:
       - run: |
           yarn install
           yarn start
+        env:
+          accessToken: ${{ secrets.ACCESSTOKEN }}
+          secret: ${{ secrets.SECRET }}
