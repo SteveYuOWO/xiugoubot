@@ -8,10 +8,10 @@ on:
     branches: [main]
   # schedule:
   # see https://docs.github.com/en/actions/learn-github-actions/events-that-trigger-workflows#schedule
-  # run the schedule once per minute
+  # run the schedule once 5 minute from 0
   # - cron: "55 * * * *"
   schedule:
-    - cron: "1 * * * *"
+    - cron: "0/5 * * * *"
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
