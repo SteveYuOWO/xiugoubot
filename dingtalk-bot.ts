@@ -1,4 +1,4 @@
-import axios, { AxiosRequestHeaders, AxiosResponse } from "axios";
+import axios, { AxiosResponse } from "axios";
 import crypto from "crypto";
 
 interface DingtalkResponse {
@@ -29,6 +29,7 @@ class DingTalkBot {
         },
       }
     );
+
     if (result.data.errcode !== 0) {
       console.log(result.data);
       throw new Error("send text failed");

@@ -1,66 +1,70 @@
 import Big from "big.js";
 import { client } from "./client";
 import DingtalkBot from "./dingtalk-bot";
+import dayjs from "dayjs";
 
-async function thresholdFuturesMarkPrice(threshold = 0.1) {
-  const futureMarkPrices = await client.futuresMarkPrice();
-  futureMarkPrices.sort((a, b) =>
-    Big(a.lastFundingRate).minus(b.lastFundingRate).toNumber()
+async function fetchSpotFuturePairs() {
+  const [spotPrices, futurePrices] = await Promise.all([
+    client.prices(),
+    client.futuresPrices(),
+  ]);
+
+  const symbols = Object.keys(futurePrices).filter((symbol) =>
+    symbol.endsWith("USDT")
   );
-  return futureMarkPrices
-    .map((a) => ({
-      symbol: a.symbol,
-      fundingRatePercent: Big(a.lastFundingRate).times(100).toNumber(),
-      markPrice: a.markPrice,
-    }))
-    .filter((a) => Math.abs(a.fundingRatePercent) > threshold);
-}
 
-export async function thresholdFuturesDailyStatses(symbols: string[]) {
-  return await Promise.all(
-    symbols.map(async (symbol) => {
-      const futuresDailyStas = await client.futuresDailyStats({ symbol });
-      return Array.isArray(futuresDailyStas)
-        ? futuresDailyStas[0]
-        : futuresDailyStas;
+  const pricePairs = symbols
+    .map((symbol) => {
+      const spotPrice = spotPrices[symbol];
+      const futurePrice = futurePrices[symbol];
+
+      if (!spotPrice || !futurePrice) {
+        return null;
+      }
+
+      const weight = Big(spotPrice).minus(futurePrice).abs().toNumber();
+
+      let level = "D";
+      if (weight > 0.1) level = "C";
+      if (weight > 1) level = "B";
+      if (weight > 5) level = "A";
+      if (weight > 10) level = "S";
+
+      // console.log(Big(futurePrice).lt(100), futurePrice)
+      return {
+        level,
+        symbol,
+        spotPrice,
+        futurePrice,
+        weight,
+      };
     })
-  );
+    .filter(Boolean)
+    .filter((a) => Big(a.futurePrice).lt(500))
+    .sort((a, b) => b.weight - a.weight); // large to small
+  return pricePairs;
 }
 
-export async function fetchAbnormalTokens() {
-  // funding rate less than 0.1 %
-  const thresholdMarkPrice = await thresholdFuturesMarkPrice();
-
-  // futures daily statses
-  const thresholdDailyStats = await thresholdFuturesDailyStatses(
-    thresholdMarkPrice.map((a) => a.symbol)
-  );
-
-  // daily bump less than 1%
-  const resultSymbol = thresholdDailyStats
-    .filter((a) => Big(a.priceChangePercent).abs().lt(1))
-    .map((a) => a.symbol);
-
-  return resultSymbol.map((symbol) => {
-    const a = thresholdMarkPrice.find((a) => a.symbol === symbol)!;
-    return a;
-  });
+export async function fetchExcellentPairs() {
+  const pairs = await fetchSpotFuturePairs();
+  const excellentPairs = pairs.filter((a) => a.level !== "D");
+  return excellentPairs;
 }
 
 export async function runApp() {
-  const abnormalTokens = await fetchAbnormalTokens();
+  const abnormalTokens = await fetchExcellentPairs();
 
-  await Promise.all(
-    abnormalTokens.map(
-      async (token) =>
-        await DingtalkBot.sendText(
-          [
-            `异常币种监测`,
-            `币种: ${token.symbol}`,
-            `资金费率: ${token.fundingRatePercent}`,
-            `标记价格: ${token.markPrice}`,
-          ].join("\n")
-        )
-    )
-  );
+  if (abnormalTokens.length > 0) {
+    const dateTime = dayjs(new Date().getTime()).format("YYYY/MM/DD HH:mm:ss");
+    const messageLines = [`时间: ${dateTime}`, "异常币种监测\n"];
+
+    let idx = 0;
+    for (const abnormalToken of abnormalTokens) {
+      idx++;
+      messageLines.push(
+        `${idx}. 币种: ${abnormalToken.symbol}\n等级: ${abnormalToken.level}\n合约价格: ${abnormalToken.futurePrice}\n权重: ${abnormalToken.weight}\n`
+      );
+    }
+    await DingtalkBot.sendText(messageLines.join("\n"));
+  }
 }

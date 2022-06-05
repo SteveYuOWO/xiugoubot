@@ -8,8 +8,7 @@ async function main() {
       "Network connect failed. Please check your network connection."
     );
   }
-
-  runApp();
+  await runApp();
 }
 
 main();
