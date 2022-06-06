@@ -47,7 +47,9 @@ async function fetchSpotFuturePairs() {
 
 export async function fetchExcellentPairs() {
   const pairs = await fetchSpotFuturePairs();
-  const excellentPairs = pairs.filter((a) => a.level !== "D");
+  const excellentPairs = pairs
+    .filter((a) => a.level !== "D")
+    .filter((a) => a.level !== "C");
   return excellentPairs;
 }
 
